@@ -3,6 +3,7 @@ import { ptBR } from 'date-fns/locale';
 import { GetStaticPaths, GetStaticProps } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { api } from '../../services/api';
 import { convertDurationToTimeString } from '../../utils/convertDurationToTimeString';
 
@@ -25,6 +26,11 @@ interface EpisodeProps {
 }
 
 export default function Episode ({ episode }: EpisodeProps) {
+    /* const router = useRouter();
+
+    if(router.isFallback) //Verificação necessária para caso use o fallback como true e deixe gerar páginas novas.
+        return <p>Carregando...</p> */
+    
     return (
         <div className={styles.episode}>
             <div className={styles.thumbnailContainer}>
@@ -55,9 +61,37 @@ export default function Episode ({ episode }: EpisodeProps) {
 }
 
 export const getStaticPaths: GetStaticPaths = async () => {
+    const { data } = await api.get('episodes', {
+        params: {
+          _limit: 2,
+          _sort: 'published_at',
+          _order: 'desc'
+        }
+      })
+
+      const paths = data.map(episode => {
+          return {
+              params: {
+                  slug: episode.id
+              }
+          }
+      })
+
+    //   Com o código acima, ele já deixa gerado os ultimos 2 podcasts, que supostamente serão os mais visitados
+
     return {
-        paths: [],
+        // paths: [], //passando um array vazio, na hora do build ele não gera nenhuma página de forma estática
+        paths, //passando os ultimos 2 podcasts para já deixar gerado
         fallback: 'blocking'
+        /*  
+            fallback: blocking -> A pessoa só é redirecionada para a tela quando estiver carregada a página.
+            
+            fallback: false -> Da 404 se a página não estiver gerada.
+            
+            fallback: true -> Ele tenta buscar os dados que estão sendo passados para criar uma página, 
+                      mas a requisição da API fica pelo lado do client, não do server.
+                      Pra evitar que dê crash, precisamos fazer uma validação com o useRouter.
+        */
     }
 }
 
